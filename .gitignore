@@ -1,4 +1,18 @@
-# Ambientes virtuais Python
-venv/
-.env/
+# Ambiente virtual
 .venv/
+
+# Dados brutos e processados
+raw_data/
+processed_data/
+*.zip
+
+# Bancos locais
+*.db
+*.sqlite3
+
+# Cache Python
+__pycache__/
+*.pyc
+
+# Logs
+*.log
