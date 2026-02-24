@@ -78,7 +78,6 @@ def transform_data(zip_path, coluna_dicionario):
     with zipfile.ZipFile(zip_path, 'r') as z:
         csv_name = z.namelist()[0]
         print(f"Extracted CSV name: {csv_name}")
-        
 
         with z.open(csv_name) as f:
             print(f"Reading data from {csv_name} with Polars...")
@@ -87,59 +86,53 @@ def transform_data(zip_path, coluna_dicionario):
                 f.read(),
                 has_header=False,
                 new_columns=coluna_dicionario,
-                separator =';',
+                separator=';',
                 encoding='latin-1',
                 truncate_ragged_lines=True,
                 infer_schema_length=0,
-                ignore_errors=True # Ignore rows that cause errors
+                ignore_errors=True
             )
 
             expressoes = [
-                regras_transformacao[col]() 
-                for col in df.columns 
+                regras_transformacao[col]()
+                for col in df.columns
                 if col in regras_transformacao
-                ]       
-    
-            # 3. Only apply transformations if there are any expressions to apply
-    return df.with_columns(expressoes) if expressoes else df
+            ]
 
+            return df.with_columns(expressoes) if expressoes else df
 
+def transform():
+    folder_origin = "raw_data"
+    files = [f for f in os.listdir(folder_origin) if f.endswith('.zip')]
+    print(f"Files found for processing: {files}")
 
+    for i, file in enumerate(files, start=1):
+        zip_path = os.path.join(folder_origin, file)
+        silver_name = file.replace(".zip", ".csv")
+        silver_path = os.path.join("processed_data", silver_name)
 
-folder_origin = "raw_data"
-files = [f for f in os.listdir(folder_origin) if f.endswith('.zip')] #List all files in the folder that end with .zip
-print(f"Files found for processing: {files}")
+        if os.path.exists(silver_path):
+            print(f"File {silver_name} already processed. Skipping...")
+            continue
 
-for i, file in enumerate(files[:2],1):
-    zip_path = os.path.join(folder_origin, file)
-    silver_name = os.path.basename(zip_path).replace(".zip", ".csv")
-    silver_path = os.path.join("processed_data", silver_name)
+        coluna_dicionario = []
 
-    #Verify if the file is already processed
-    if os.path.exists(silver_path):
-        print(f"File {silver_name} already processed. Skipping...")
-        continue
+        for key, value in mapeamento_dicionario.items():
+            if key in silver_name.lower():
+                coluna_dicionario = value
+                break
 
-    coluna_dicionario = []
-    for key,value in mapeamento_dicionario.items():
-        if key in silver_name.lower():
-            coluna_dicionario = value
-            break
+        try:
+            print(f"Processing file {i}/{len(files)}: {file}")
 
-    try:
+            df_transformed = transform_data(zip_path, coluna_dicionario)
 
-        print(f"Processing file {i}/{len(files)}: {file}")
-        df_transformed = transform_data(zip_path, coluna_dicionario)
+            print(f"Saving {silver_name}...")
+            df_transformed.write_csv(silver_path, separator=';')
 
-        print(f"Transformation complete for {silver_name}. Saving to processed_data folder...")
-        df_transformed.write_csv(silver_path, separator=';')
+            print(f"File {silver_name} processed successfully.")
 
-        print(f"File {silver_name} processed and saved successfully.")
-    except Exception as e:
-        print(f"Error processing file {silver_name}: {e}")
-    
-print("All files processed.")
-            
+        except Exception as e:
+            print(f"Error processing file {silver_name}: {e}")
 
-
-
+    print("All files processed.")

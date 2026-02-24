@@ -1,12 +1,18 @@
 
-from Extract.extract import extract_zips
-from Transform.transform import transform_data
-from Load.load import load_data
+from Extract.extract import extract
+from Transform.transform import transform
+from Load.load import load
 
+
+if __name__ == "__main__":
 # Step 1: Extract
+    extract()
+    print("Finalized the extraction process.")
 # Step 2: Transform
+    #transform()
 # Step 3: Load
+    #load()
 
 
 
-#if __name__ == "__main__":
+

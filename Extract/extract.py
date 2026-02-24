@@ -2,49 +2,78 @@ import os
 import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
-# 1. Config
-url = "https://arquivos.receitafederal.gov.br/dados/cnpj/dados_abertos_cnpj/2026-01/"
-folder = "raw_data"
+# Configurações de retry para lidar com falhas temporárias de rede
+def create_session_with_retry():
+    session = requests.Session()
 
-def extract_zips(url):
-        print(f"Acessing url {url}")
+    retry = Retry(
+        total=5,                # tenta até 5 vezes
+        backoff_factor=2,       # tempo exponencial (2, 4, 8...)
+        status_forcelist=[500, 502, 503, 504],
+        allowed_methods=["GET"]
+    )
 
-        #Make a request to the URL
-        response = requests.get(url)
-        if response.status_code != 200:
-            print(f"The request has failed with status code {response.status_code}")
-            return
+    adapter = HTTPAdapter(max_retries=retry)
+    session.mount("http://", adapter)
+    session.mount("https://", adapter)
 
-        # busca por links dentro da pagina HTML
-        soup = BeautifulSoup(response.text, 'html.parser')#Organiza os dados encontrados na pahia HTML
-        links = soup.find_all('a')#Encontra todos os links na página HTML
+    return session
 
+
+
+def extract_zips(url, folder):
+    print(f"Accessing url {url}")
+
+    #Inicia sessão 
+    session = create_session_with_retry()
+
+    try:
+        #Faz a requisição para o site
+        response = session.get(url, stream=True, timeout=30)
+        response.raise_for_status()
+
+        #Web scraping para encontrar os links dos arquivos zip
+        soup = BeautifulSoup(response.content, 'html.parser')
+        links = soup.find_all('a')
+
+        #Encontra os arquivos zip e baixa
         for link in links:
             href = link.get('href')
 
-            # Check if the link ends with .zip
             if href and href.endswith('.zip'):
-                # Create the full URL
                 zip_url = urljoin(url, href)
-                print(f"Found zip file: {zip_url}")
-
                 archive_name = os.path.join(folder, href.split('/')[-1])
-                if os.path.exists(archive_name):
-                    print(f"{archive_name} already exists. Skipping download.")
-                    continue
-                print(f"Starting download of {archive_name}...")
 
-                # Download the zip file
-                with requests.get(zip_url, stream=True) as r:
+                if os.path.exists(archive_name):
+                    print(f"{archive_name} already exists. Skipping.")
+                    continue
+
+                print(f"Downloading {archive_name}...")
+
+                with session.get(zip_url, stream=True, timeout=60) as r:
                     r.raise_for_status()
                     with open(archive_name, 'wb') as f:
                         for chunk in r.iter_content(chunk_size=8192):
-                            f.write(chunk)
-        print("All files have been downloaded.")
+                            if chunk:
+                                f.write(chunk)
 
-# Create folder if it doesn't exist
-if not os.path.exists(folder):
-    os.makedirs(folder)
+        print("All files processed.")
 
-extract_zips(url)
+    #Tratamento de exceções para falhas de rede
+    except requests.RequestException as e:
+        print(f"Failed after retries: {e}")
+
+def extract():
+    print("Starting the extraction process...")
+    # 1. Config
+    url = "https://arquivos.receitafederal.gov.br/index.php/s/YggdBLfdninEJX9?dir=/2026-01"
+    folder = "raw_data"
+
+    # Criar pasta se não existir
+    if not os.path.exists(folder):
+       os.makedirs(folder)
+
+    extract_zips(url,folder)

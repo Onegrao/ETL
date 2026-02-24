@@ -2,8 +2,6 @@ import os
 import sqlite3
 import polars as pl
 
-silver_folder = "processed_data"
-db_name = "Load/dadoscnpj.db"
 
 def load_data(silver_folder, db_name):
     conn = sqlite3.connect(db_name)
@@ -55,4 +53,7 @@ def load_data(silver_folder, db_name):
     conn.close()
     print("All data has been loaded into the database.")
 
-load_data(silver_folder, db_name)
+def load():  
+    silver_folder = "processed_data"
+    db_name = "Load/dadoscnpj.db"       
+    load_data(silver_folder, db_name)
