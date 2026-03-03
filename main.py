@@ -6,10 +6,11 @@ from Load.load import load
 
 if __name__ == "__main__":
 # Step 1: Extract
-    extract()
+    #extract()
     print("Finalized the extraction process.")
 # Step 2: Transform
-    #transform()
+    transform()
+    print("Finalized the transformation process.")
 # Step 3: Load
     #load()
 

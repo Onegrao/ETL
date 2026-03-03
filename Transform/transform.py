@@ -2,6 +2,8 @@
 import os
 import polars as pl
 import zipfile
+import tempfile
+import io
 
 # 1. Config
 
@@ -79,29 +81,35 @@ def transform_data(zip_path, coluna_dicionario):
         csv_name = z.namelist()[0]
         print(f"Extracted CSV name: {csv_name}")
 
-        with z.open(csv_name) as f:
-            print(f"Reading data from {csv_name} with Polars...")
+        # 🔥 extrai para arquivo temporário (streaming real depois)
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".csv") as tmp:
+            with z.open(csv_name) as f:
+                tmp.write(f.read())
+            temp_path = tmp.name
 
-            df = pl.read_csv(
-                f.read(),
-                has_header=False,
-                new_columns=coluna_dicionario,
-                separator=';',
-                encoding='latin-1',
-                truncate_ragged_lines=True,
-                infer_schema_length=0,
-                ignore_errors=True
-            )
+    print(f"Reading data from temp file with Polars...")
 
-            expressoes = [
-                regras_transformacao[col]()
-                for col in df.columns
-                if col in regras_transformacao
-            ]
+    df = pl.scan_csv(
+        temp_path,
+        has_header=False,
+        new_columns=coluna_dicionario,
+        separator=';',
+        encoding='utf8-lossy',
+        truncate_ragged_lines=True,
+        infer_schema_length=1000,
+        ignore_errors=True
+    )
 
-            return df.with_columns(expressoes) if expressoes else df
+    expressoes = [
+        regras_transformacao[col]()
+        for col in df.collect_schema().names()
+        if col in regras_transformacao
+    ]
+
+    return df.with_columns(expressoes) if expressoes else df
 
 def transform():
+    print("Starting the transformation process...")
     folder_origin = "raw_data"
     files = [f for f in os.listdir(folder_origin) if f.endswith('.zip')]
     print(f"Files found for processing: {files}")
@@ -128,7 +136,7 @@ def transform():
             df_transformed = transform_data(zip_path, coluna_dicionario)
 
             print(f"Saving {silver_name}...")
-            df_transformed.write_csv(silver_path, separator=';')
+            df_transformed.sink_csv(silver_path, separator=';')
 
             print(f"File {silver_name} processed successfully.")
 
