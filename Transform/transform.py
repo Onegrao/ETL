@@ -30,9 +30,7 @@ estabelecimentos = [
 ]
 
 motivos = [
-    'cnpj_basico', 'opcao_simples', 'data_opcao_simples',
-    'data_exclusao_simples', 'opcao_mei', 'data_opcao_mei',
-    'data_exclusao_mei'
+    'codigo_motivo', 'descricao_motivo'
 ]
 
 socios = [
@@ -81,7 +79,7 @@ def transform_data(zip_path, coluna_dicionario):
         csv_name = z.namelist()[0]
         print(f"Extracted CSV name: {csv_name}")
 
-        # 🔥 extrai para arquivo temporário (streaming real depois)
+        # extrai para arquivo temporário (streaming real depois)
         with tempfile.NamedTemporaryFile(delete=False, suffix=".csv") as tmp:
             with z.open(csv_name) as f:
                 tmp.write(f.read())
