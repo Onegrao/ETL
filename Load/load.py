@@ -4,6 +4,7 @@ import polars as pl
 
 
 def load_data(silver_folder, db_name):
+    os.makedirs(os.path.dirname(db_name), exist_ok=True)
     conn = sqlite3.connect(db_name)
 
     # PRAGMAs de performance
@@ -37,7 +38,7 @@ def load_data(silver_folder, db_name):
                 break
 
             for batch in batches:
-                batch.to_pandas().to_sql(
+                batch.write_database(
                     table_name,
                     conn,
                     if_exists='append',
@@ -54,6 +55,7 @@ def load_data(silver_folder, db_name):
     print("All data has been loaded into the database.")
 
 def load():  
+    print("Starting the loading process...")
     silver_folder = "processed_data"
     db_name = "Load/dadoscnpj.db"       
     load_data(silver_folder, db_name)
